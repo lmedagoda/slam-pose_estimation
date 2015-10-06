@@ -31,6 +31,9 @@ namespace pose_estimation
   const int MEASUREMENT_SIZE = BODY_STATE_SIZE + 3;
   
   typedef Eigen::Matrix<double, BODY_STATE_SIZE, BODY_STATE_SIZE> Covariance;
+  
+  const int BODY_STATE_SIZE_YB = 13;
+  typedef Eigen::Matrix<double, BODY_STATE_SIZE_YB, BODY_STATE_SIZE_YB> CovarianceYB;
 
 struct Measurement
 {
