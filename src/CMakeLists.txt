@@ -11,6 +11,9 @@ set (POSE_ESTIMATION_HEADERS
     Measurement.hpp
     PoseEKF.hpp
     PoseUKF.hpp
+    mtk_ukf/ExtraStates.hpp
+    mtk_ukf/PoseWithVelocityExtraStates.hpp
+    PoseUKFADCP.hpp
     )
     
 set (POSE_ESTIMATION_SOURCES
@@ -19,6 +22,7 @@ set (POSE_ESTIMATION_SOURCES
     PoseEstimator.cpp
     PoseEKF.cpp
     PoseUKF.cpp
+    PoseUKFADCP.cpp
     )
 
 rock_library(pose_estimation

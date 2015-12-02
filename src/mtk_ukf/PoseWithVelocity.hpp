@@ -6,7 +6,7 @@
 #include <mtk/types/SOn.hpp>
 #include <mtk/types/vect.hpp>
 #include <mtk/startIdx.hpp>
-#include <boost/concept_check.hpp>
+//#include <boost/concept_check.hpp>
 
 #include <base/Pose.hpp>
 
@@ -28,7 +28,7 @@ public:
     typedef typename rotation_type::scalar scalar;
     typedef PoseWithVelocity self;
     enum {DOF = TranslationDOF + RotationDOF + VelocityDOF + AngularVelocityDOF};
-    typedef Eigen::Matrix<scalar, int(DOF), int(DOF)> cov;
+    typedef Eigen::Matrix<double, int(DOF), int(DOF)> cov;
 
     // State types
     MTK::SubManifold<TranslationType, TranslationIdx> position;

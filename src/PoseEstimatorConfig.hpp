@@ -6,7 +6,8 @@ namespace pose_estimation
     enum FilterType
     {
 	EKF,
-	UKF
+	UKF,
+	UKFADCP
     };
 }
 

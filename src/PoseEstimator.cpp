@@ -1,6 +1,7 @@
 #include "PoseEstimator.hpp"
 #include <pose_estimation/PoseEKF.hpp>
 #include <pose_estimation/PoseUKF.hpp>
+#include <pose_estimation/PoseUKFADCP.hpp>
 #include <base/Logging.hpp>
 #include <base/Float.hpp>
 
@@ -9,10 +10,20 @@ namespace pose_estimation
 
 PoseEstimator::PoseEstimator(FilterType filter_type) : last_measurement_time(base::Time::fromSeconds(0.0)), max_time_delta(base::infinity<double>())
 {
-    if(filter_type == UKF)
-	filter.reset(new PoseUKF());
-    else  
-	filter.reset(new PoseEKF());
+    switch (filter_type)
+        {
+        case UKF:
+            filter.reset(new PoseUKF());
+            break;
+        case EKF:
+            filter.reset(new PoseEKF());
+            break;
+        case UKFADCP:
+            filter.reset(new PoseUKFADCP());
+            break;
+        default:
+            filter.reset(new PoseUKF());
+        }
 }
 
 void PoseEstimator::setInitialState(const base::samples::RigidBodyState& body_state)
