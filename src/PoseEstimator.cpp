@@ -1,26 +1,24 @@
 #include "PoseEstimator.hpp"
-#include <pose_estimation/PoseEKF.hpp>
-#include <pose_estimation/PoseUKF.hpp>
+#include <pose_estimation/pose_with_velocity/PoseUKF.hpp>
 #include <base/Logging.hpp>
 #include <base/Float.hpp>
 
 namespace pose_estimation
 {
 
-PoseEstimator::PoseEstimator(FilterType filter_type) : last_measurement_time(base::Time::fromSeconds(0.0)), max_time_delta(base::infinity<double>())
+PoseEstimator::PoseEstimator(boost::shared_ptr<AbstractFilter> filter) : filter(filter),
+                last_measurement_time(base::Time::fromSeconds(0.0)), max_time_delta(base::infinity<double>())
 {
-    if(filter_type == UKF)
-	filter.reset(new PoseUKF());
-    else  
-	filter.reset(new PoseEKF());
+    if(filter.get() == NULL)
+        throw std::runtime_error("The pose estimator needs a valid filter!");
 }
 
-void PoseEstimator::setInitialState(const base::samples::RigidBodyState& body_state)
+void PoseEstimator::setInitialState(const AbstractFilter::FilterState& state)
 {
-    filter->setInitialState(body_state);
+    filter->setInitialState(state);
 }
 
-void PoseEstimator::setProcessNoise(const Covariance& process_noise)
+void PoseEstimator::setProcessNoise(const AbstractFilter::FilterState::Cov& process_noise)
 {
     filter->setProcessNoiseCovariance(process_noise);
 }
@@ -30,40 +28,30 @@ void PoseEstimator::setMaxTimeDelta(double max_time_delta)
     this->max_time_delta = max_time_delta;
 }
 
-bool PoseEstimator::enqueueMeasurement(const base::samples::RigidBodyState& body_state, const Measurement::MemberMask& member_mask)
-{
-    if(!checkMemberMask(member_mask))
-    {
-	throw std::runtime_error("Member mask contains invalid values. Only 0 and 1 is allowed." );
-    }
-    
-    Measurement measurement;
-    measurement.body_state = body_state;
-    measurement.member_mask = member_mask;
-    return enqueueMeasurement(measurement);
-}
-
 bool PoseEstimator::enqueueMeasurement(const Measurement& measurement)
 {
-    if(measurement.body_state.time < last_measurement_time)
+    if(measurement.time < last_measurement_time)
     {
 	LOG_WARN("Attempt to enqueue an older measurement. This Measurement will be skiped.");
 	return false;
     }
-	
+
     measurement_queue.push(measurement);
+    latest_measurements[measurement.measurement_name] = measurement;
     
     return true;
 }
 
-void PoseEstimator::integrateMeasurements()
+void PoseEstimator::integrateMeasurements(unsigned measurement_count)
 {
-    while (!measurement_queue.empty())
+    unsigned measurements_handled = 0;
+    while (!measurement_queue.empty() && measurements_handled <= measurement_count)
     {
 	Measurement measurement = measurement_queue.top();
 	measurement_queue.pop();
 
 	processMeasurement(measurement);
+        measurements_handled++;
     }
 }
 
@@ -94,7 +82,7 @@ void PoseEstimator::processMeasurement(const Measurement& measurement)
 {
     if(!last_measurement_time.isNull())
     {
-	double time_delta = (measurement.body_state.time - last_measurement_time).toSeconds();
+	double time_delta = (measurement.time - last_measurement_time).toSeconds();
 	
 	if(time_delta < 0.0)
 	    throw std::runtime_error("Attempt to process an older measurement. Time delta is negative!");
@@ -111,29 +99,15 @@ void PoseEstimator::processMeasurement(const Measurement& measurement)
     // correction step
     filter->correctionStep(measurement);
     
-    last_measurement_time = measurement.body_state.time;
+    last_measurement_time = measurement.time;
 }
 
-bool PoseEstimator::getEstimatedState(base::samples::RigidBodyState &estimated_state)
+bool PoseEstimator::getEstimatedState(AbstractFilter::FilterState &estimated_state)
 {
     if(last_measurement_time.isNull())
 	return false;
-    
-    estimated_state = filter->getCurrentState();
-    estimated_state.time = last_measurement_time;
-    return true;
-}
 
-bool PoseEstimator::checkMemberMask(const Measurement::MemberMask& member_mask)
-{
-    if(member_mask.rows() != BODY_STATE_SIZE || member_mask.cols() != 1)
-	return false;
-    for(unsigned i = 0; i < BODY_STATE_SIZE; i++)
-    {
-	if(!(member_mask(i, 0) == 0 || member_mask(i, 0) == 1))
-	    return false;
-    }
-    return true;
+    return filter->getCurrentState(estimated_state);
 }
 
 }

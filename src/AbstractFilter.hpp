@@ -2,19 +2,36 @@
 #define _POSE_ESTIMATION_ABSTRACT_FILTER_HPP
 
 #include <pose_estimation/Measurement.hpp>
-#include <base/samples/RigidBodyState.hpp>
 
 namespace pose_estimation
 {
     class AbstractFilter
     {
     public:
+        typedef StateAndCovariance FilterState;
+
         virtual ~AbstractFilter() { }
-	virtual void setInitialState(const base::samples::RigidBodyState& body_state) = 0;
-	virtual void setProcessNoiseCovariance(const Covariance& noise_cov) = 0;
-	virtual void predictionStep(const double delta) = 0;
-	virtual void correctionStep(const Measurement& measurement) = 0;
-	virtual const base::samples::RigidBodyState& getCurrentState() = 0;
+
+	void setInitialState(const FilterState& initial_state);
+
+	void setProcessNoiseCovariance(const FilterState::Cov& noise_cov);
+
+        void correctionStep(const Measurement& measurement);
+
+        virtual void predictionStep(const double delta) = 0;
+
+	virtual bool getCurrentState(FilterState& filter_state) = 0;
+
+        virtual unsigned getStateSize() const = 0;
+
+    protected:
+        virtual void setInitialStateImpl(const FilterState& initial_state) = 0;
+
+        virtual void setProcessNoiseCovarianceImpl(const FilterState::Cov& noise_cov) = 0;
+
+        virtual void correctionStepImpl(const Measurement& measurement) = 0;
+
+        bool checkMeasurement(const Measurement& measurement, Measurement& measurement_corrected);
     };
 }
 
