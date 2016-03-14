@@ -10,6 +10,8 @@ set (POSE_ESTIMATION_HEADERS
     pose_with_velocity/PoseWithVelocity.hpp
     pose_with_velocity/PoseUKF.hpp
     pose_with_velocity/BodyStateMeasurement.hpp
+    orientation_estimator/OrientationState.hpp
+    orientation_estimator/OrientationUKF.hpp
     )
     
 set (POSE_ESTIMATION_SOURCES
@@ -17,6 +19,7 @@ set (POSE_ESTIMATION_SOURCES
     AbstractFilter.cpp
     StreamAlignmentVerifier.cpp
     pose_with_velocity/PoseUKF.cpp
+    orientation_estimator/OrientationUKF.cpp
     )
 
 rock_library(pose_estimation
