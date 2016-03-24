@@ -41,6 +41,7 @@ public:
     typedef Manifold State;
     typedef ukfom::mtkwrap<Manifold> WState;
     typedef ukfom::ukf<WState> MTK_UKF;
+    typedef Eigen::Matrix<typename State::scalar, State::DOF, 1> Mu;
     typedef typename MTK_UKF::cov Covariance;
     template <typename Scalar>
     struct MahalanobisDistance
