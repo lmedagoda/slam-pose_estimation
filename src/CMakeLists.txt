@@ -13,6 +13,11 @@ set (POSE_ESTIMATION_HEADERS
     orientation_estimator/OrientationState.hpp
     orientation_estimator/OrientationUKF.hpp
     orientation_estimator/OrientationUKFConfig.hpp
+    adcp_estimator/FullState.hpp
+    adcp_estimator/FullUKF.hpp
+    adcp_estimator/FullUKFConfig.hpp
+    adcp_estimator/adcp_measurement_model.hpp
+    adcp_estimator/rtwtypes.h
     )
     
 set (POSE_ESTIMATION_SOURCES
@@ -21,6 +26,8 @@ set (POSE_ESTIMATION_SOURCES
     StreamAlignmentVerifier.cpp
     pose_with_velocity/PoseUKF.cpp
     orientation_estimator/OrientationUKF.cpp
+    adcp_estimator/FullUKF.cpp
+    adcp_estimator/adcp_measurement_model.cpp
     )
 
 rock_library(pose_estimation
