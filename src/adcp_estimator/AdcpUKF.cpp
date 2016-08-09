@@ -1,4 +1,4 @@
-#include "FullUKF.hpp"
+#include "AdcpUKF.hpp"
 #include <base/Float.hpp>
 #include <base/Logging.hpp>
 #include <pose_estimation/EulerConversion.hpp>
@@ -17,19 +17,19 @@ static const double EARTHW =  7.292115e-05; /** Earth angular velocity in rad/s 
 namespace pose_estimation
 {
 
-const std::string FullUKF::acceleration_measurement = "acceleration";
-const std::string FullUKF::rotation_rate_measurement = "rotation_rate";
-const std::string FullUKF::velocity_measurement = "velocity";
-const std::string FullUKF::adcp_measurement = "adcp";
+const std::string AdcpUKF::acceleration_measurement = "acceleration";
+const std::string AdcpUKF::rotation_rate_measurement = "rotation_rate";
+const std::string AdcpUKF::velocity_measurement = "velocity";
+const std::string AdcpUKF::adcp_measurement = "adcp";
 
 /** Process model for the robot orientation
  */
-template <typename FullState>
-FullState
-processModel (const FullState &state, const Eigen::Vector3d& acc, const Eigen::Vector3d& omega, double delta_time,
-              const FullUKFConfig &config, const Eigen::Vector3d& earth_rotation, const Eigen::Vector3d& gravity)
+template <typename AdcpState>
+AdcpState
+processModel (const AdcpState &state, const Eigen::Vector3d& acc, const Eigen::Vector3d& omega, double delta_time,
+              const AdcpUKFConfig &config, const Eigen::Vector3d& earth_rotation, const Eigen::Vector3d& gravity)
 {
-    FullState new_state(state);
+    AdcpState new_state(state);
     Eigen::Vector3d angular_velocity = omega - new_state.bias_gyro - new_state.orientation.inverse()*earth_rotation;
     //Eigen::Vector3d angular_velocity = omega - new_state.orientation.inverse()*earth_rotation;
     new_state.orientation.boxplus(angular_velocity, delta_time);
@@ -49,18 +49,18 @@ processModel (const FullState &state, const Eigen::Vector3d& acc, const Eigen::V
     return new_state;
 }
 
-template <typename FullState>
-Eigen::Matrix<typename FullState::scalar, -1, 1>
-velocityMeasurementModel ( const FullState &state, const Eigen::Quaterniond& current_orientation )
+template <typename AdcpState>
+Eigen::Matrix<typename AdcpState::scalar, -1, 1>
+velocityMeasurementModel ( const AdcpState &state, const Eigen::Quaterniond& current_orientation )
 {
     return  state.orientation.inverse() * state.velocity;
     
 }
 
-template <typename FullState>
-Eigen::Matrix<typename FullState::scalar, -1, 1>
-adcpMeasurementModel ( const FullState &state, adcp_model::ADCP_measurement_model& ADCP_model, 
-		       FullUKFConfig config, boost::shared_ptr<FullUKF::MTK_UKF> ukf )
+template <typename AdcpState>
+Eigen::Matrix<typename AdcpState::scalar, -1, 1>
+adcpMeasurementModel ( const AdcpState &state, adcp_model::ADCP_measurement_model& ADCP_model,
+               AdcpUKFConfig config, boost::shared_ptr<AdcpUKF::MTK_UKF> ukf )
 {
 	//one beam at a time, populate a large measurement vector for the return
 	ADCP_model.resetOutput();
@@ -143,17 +143,28 @@ adcpMeasurementModel ( const FullState &state, adcp_model::ADCP_measurement_mode
 		//std::cout << std::endl;
 	}		
 
-	return  ADCP_model.PredictedMeasurement;
+    //in cell order, in beam order.
+    Eigen::Matrix<double, Eigen::Dynamic, 1> PredictedMeasurement;
+
+    for (int i=0;i<ADCP_MAX_CELLS;i++)
+    {
+        PredictedMeasurement[4*i] = ADCP_model.PredictedMeasurement[i,0] - state.bias_adcp[0];
+        PredictedMeasurement[4*i+1] = ADCP_model.PredictedMeasurement[i,1] - state.bias_adcp[1];
+        PredictedMeasurement[4*i+2] = ADCP_model.PredictedMeasurement[i,2] - state.bias_adcp[2];
+        PredictedMeasurement[4*i+3] = ADCP_model.PredictedMeasurement[i,3] - state.bias_adcp[3];
+    }
+
+    return  PredictedMeasurement; // may need to be trimmed. biases are just for each beam, this needs to be applied as well, but we start without them.
 	
 }
 
-FullUKF::FullUKF(const AbstractFilter::FilterState& initial_state, const FullUKFConfig& config) : config(config)
+AdcpUKF::AdcpUKF(const AbstractFilter::FilterState& initial_state, const AdcpUKFConfig& config) : config(config)
 {
     setInitialState(initial_state);
     updateFilterParamter();
 }
 
-void FullUKF::predictionStep(const double delta)
+void AdcpUKF::predictionStep(const double delta)
 {
     std::map<std::string, pose_estimation::Measurement>::const_iterator acceleration = latest_measurements.find(acceleration_measurement);
     std::map<std::string, pose_estimation::Measurement>::const_iterator rotation_rate = latest_measurements.find(rotation_rate_measurement);
@@ -178,13 +189,13 @@ void FullUKF::predictionStep(const double delta)
 
 }
 
-void FullUKF::setFilterConfiguration(const FullUKFConfig& config)
+void AdcpUKF::setFilterConfiguration(const AdcpUKFConfig& config)
 {
     this->config = config;
     updateFilterParamter();
 }
 
-void FullUKF::correctionStepUser(const pose_estimation::Measurement& measurement)
+void AdcpUKF::correctionStepUser(const pose_estimation::Measurement& measurement)
 {
     if(measurement.measurement_name == acceleration_measurement)
         latest_measurements[measurement.measurement_name] = measurement;
@@ -203,16 +214,18 @@ void FullUKF::correctionStepUser(const pose_estimation::Measurement& measurement
     {
 	    std::cout << "adcp measurement:" << measurement.mu << std::endl;
 	    // handle velocity measurement
-	    	    
+
+        //measurement will have to be pre-ordered to match the formatting of the output measurement
+
 	    ukf->update(measurement.mu, boost::bind(adcpMeasurementModel<State>, _1, ADCP_model, config, ukf),
 			boost::bind(ukfom::id< Eigen::MatrixXd >, measurement.cov),
 			allowed_distance);    
     }
     else
-        LOG_ERROR_S << "Measurement " << measurement.measurement_name << " is not supported by the Full filter.";
+        LOG_ERROR_S << "Measurement " << measurement.measurement_name << " is not supported by the Adcp filter.";
 }
 
-void FullUKF::updateFilterParamter()
+void AdcpUKF::updateFilterParamter()
 {
     double gyro_bias_var = (2.0 *pow(config.gyro_bias_std,2)) / config.gyro_bias_tau;
     double acc_bias_var = (2.0 *pow(config.acc_bias_std,2)) / config.acc_bias_tau;
@@ -223,6 +236,8 @@ void FullUKF::updateFilterParamter()
     MTK::setDiagonal(process_noise_cov, &WState::position, 0);
     MTK::setDiagonal(process_noise_cov, &WState::bias_gyro, gyro_bias_var);
     MTK::setDiagonal(process_noise_cov, &WState::bias_acc, acc_bias_var);
+    MTK::setDiagonal(process_noise_cov, &WState::bias_adcp, 0.01);
+    MTK::setDiagonal(process_noise_cov, &WState::water_velocity, 0.01);
 
     earth_rotation[0] = cos(config.latitude)*EARTHW;
     earth_rotation[1] = 0.0;
@@ -277,7 +292,7 @@ void FullUKF::updateFilterParamter()
     
 }
 
-void FullUKF::muToUKFState(const FilterState::Mu& mu, WState& state) const
+void AdcpUKF::muToUKFState(const FilterState::Mu& mu, WState& state) const
 {
     assert(mu.rows() >= WState::DOF);
 
@@ -292,7 +307,7 @@ void FullUKF::muToUKFState(const FilterState::Mu& mu, WState& state) const
     
 }
 
-void FullUKF::UKFStateToMu(const WState& state, FilterState::Mu& mu) const
+void AdcpUKF::UKFStateToMu(const WState& state, FilterState::Mu& mu) const
 {
     mu.resize(WState::DOF);
     mu.setZero();

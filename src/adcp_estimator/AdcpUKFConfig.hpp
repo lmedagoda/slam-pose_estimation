@@ -1,10 +1,10 @@
-#ifndef _POSE_ESTIMATION_FULL_UKF_CONFIG_HPP
-#define _POSE_ESTIMATION_FULL_UKF_CONFIG_HPP
+#ifndef _POSE_ESTIMATION_ADCP_UKF_CONFIG_HPP
+#define _POSE_ESTIMATION_ADCP_UKF_CONFIG_HPP
 
 namespace pose_estimation
 {
 
-struct FullUKFConfig
+struct AdcpUKFConfig
 {
     double gyro_var; // (rad/s)/sqrt(Hz)
     double acc_var; // (m/s)/sqrt(Hz)

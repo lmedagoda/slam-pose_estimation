@@ -1,8 +1,8 @@
-#ifndef _POSE_ESTIMATION_FULL_UKF_HPP
-#define _POSE_ESTIMATION_FULL_UKF_HPP
+#ifndef _POSE_ESTIMATION_ADCP_UKF_HPP
+#define _POSE_ESTIMATION_ADCP_UKF_HPP
 
-#include "FullState.hpp"
-#include "FullUKFConfig.hpp"
+#include "AdcpState.hpp"
+#include "AdcpUKFConfig.hpp"
 #include <pose_estimation/Measurement.hpp>
 #include <pose_estimation/UKF.hpp>
 #include "adcp_measurement_model.hpp"
@@ -15,7 +15,7 @@
 namespace pose_estimation
 {
 
-class FullUKF : public UKF<FullState>
+class AdcpUKF : public UKF<AdcpState>
 {
 public:
 	//typedef Manifold State;
@@ -28,12 +28,12 @@ public:
 
 public:
 
-    FullUKF(const FilterState& initial_state, const FullUKFConfig& config);
-    virtual ~FullUKF() {}
+    AdcpUKF(const FilterState& initial_state, const AdcpUKFConfig& config);
+    virtual ~AdcpUKF() {}
     
     virtual void predictionStep(const double delta);
 
-    void setFilterConfiguration(const FullUKFConfig& config);
+    void setFilterConfiguration(const AdcpUKFConfig& config);
     
     
 protected:
@@ -48,7 +48,7 @@ protected:
 protected:
     std::map<std::string, pose_estimation::Measurement> latest_measurements;
     
-    FullUKFConfig config;
+    AdcpUKFConfig config;
 
     Eigen::Vector3d earth_rotation;
     Eigen::Vector3d gravity;
