@@ -73,8 +73,6 @@ namespace adcp_model
 	// Eigen supports using this through Map: http://eigen.tuxfamily.org/dox-devel/group__TutorialMapClass.html
 	// probably just natively use Eigen?
 
-	void test(void);
-
 	private:
 
 	unsigned short measurement_counter;

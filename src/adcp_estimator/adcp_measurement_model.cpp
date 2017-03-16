@@ -2522,13 +2522,4 @@ void ADCP_measurement_model::calculateWaterCurrentVelocityJacobian(uint16_T cell
 
 /* End of code generation (calculateWaterCurrentVelocityJacobian.cpp) */
 
-void ADCP_measurement_model::test(void)
-{
-    std::cout << "Hello World!" << std::endl;
-    //    std::cout << (&X_EKF)[10] << std::endl;
-    std::cout << X_EKF[199] << std::endl;
-    std::cout << "Position [2]: ";
-    std::cout << position[2] << std::endl;
-
-}
 
